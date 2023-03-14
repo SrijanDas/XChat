@@ -15,7 +15,7 @@ class ChatScreen extends StatefulWidget {
 }
 
 class _ChatScreenState extends State<ChatScreen> {
-  final List<Message> messages = [
+  List<Message> messages = [
     Message(
         chatId: "fkldjgl",
         readBy: [User(name: "patrick", userId: "userId")],
@@ -79,10 +79,49 @@ class _ChatScreenState extends State<ChatScreen> {
   ];
 
   final String currentUser = "srijan";
+  final ScrollController _scrollController = ScrollController();
+  late TextEditingController _inputController;
+  bool showSendBtn = false;
+
+  @override
+  void initState() {
+    // TODO: implement initState
+    super.initState();
+
+    _inputController = TextEditingController();
+    WidgetsBinding.instance.addPostFrameCallback((timeStamp) {
+      _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+    });
+  }
+
+  void sendMessage() {
+    setState(() {
+      messages.add(Message(
+          chatId: "chatId",
+          readBy: [User(name: "patrick", userId: "userId")],
+          senderId: currentUser,
+          content: _inputController.text));
+
+      showSendBtn = false;
+    });
+
+    _scrollController.animateTo(_scrollController.position.maxScrollExtent,
+        duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
+
+    _inputController.clear();
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
+
+    _inputController.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      // resizeToAvoidBottomInset: true,
         appBar: AppBar(
           elevation: 0,
           titleSpacing: 0,
@@ -141,38 +180,54 @@ class _ChatScreenState extends State<ChatScreen> {
         ),
         body: Stack(
           children: [
-            SingleChildScrollView(
-              physics: scrollPhysics,
-              padding: const EdgeInsets.fromLTRB(10.0, 0, 10.0, 60.0),
-              child: Column(
-                children: messages
-                    .map((m) => Align(
-                          alignment: m.senderId == currentUser
-                              ? Alignment.topRight
-                              : Alignment.topLeft,
-                          child: Container(
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(20),
-                              color: m.senderId == currentUser
-                                  ? Colors.blue[200]
-                                  : Colors.grey.shade200,
-                            ),
-                            padding: const EdgeInsets.all(14.0),
-                            margin: const EdgeInsets.symmetric(vertical: 15.0),
-                            child: Text(
-                              m.content,
-                              style: const TextStyle(color: Colors.black),
-                            ),
+            GestureDetector(
+              onTap: (){
+                FocusNode currentFocus = FocusScope.of(context);
+                if(!currentFocus.hasPrimaryFocus) {
+                  currentFocus.unfocus();
+                }
+              },
+              child: Container(
+                height: MediaQuery.of(context).size.height - 175,
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                child: ListView.builder(
+                  keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+                    controller: _scrollController,
+                    physics: scrollPhysics,
+                    addAutomaticKeepAlives: false,
+                    cacheExtent: 100.0,
+                    shrinkWrap: true,
+                    itemCount: messages.length,
+                    itemBuilder: (context, i) {
+                      return Align(
+                        alignment: messages[i].senderId == currentUser
+                            ? Alignment.topRight
+                            : Alignment.topLeft,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(20),
+                            color: messages[i].senderId == currentUser
+                                ? Colors.blue[200]
+                                : Colors.grey.shade200,
                           ),
-                        ))
-                    .toList(),
+                          padding: const EdgeInsets.all(14.0),
+                          margin: const EdgeInsets.symmetric(vertical: 15.0),
+                          child: Text(
+                            messages[i].content,
+                            style: const TextStyle(color: Colors.black),
+                          ),
+                        ),
+                      );
+                    }),
               ),
             ),
+
             Align(
               alignment: Alignment.bottomLeft,
               child: Container(
-                padding: const EdgeInsets.only(left: 10, bottom: 10, top: 10),
+                padding: const EdgeInsets.all(10),
                 child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Expanded(
                       child: Card(
@@ -181,22 +236,38 @@ class _ChatScreenState extends State<ChatScreen> {
                           borderRadius: BorderRadius.all(Radius.circular(20)),
                         ),
                         child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          crossAxisAlignment: CrossAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
                             IconButton(
                                 onPressed: () {},
                                 splashRadius: 18.0,
                                 icon: Icon(Icons.emoji_emotions_outlined,
-                                    color: grey)
-                            ),
-                            const Expanded(
+                                    color: grey)),
+                            Expanded(
                               child: TextField(
-                                decoration: InputDecoration(
+                                textAlignVertical: TextAlignVertical.center,
+                                keyboardType: TextInputType.multiline,
+                                maxLines: 5,
+                                minLines: 1,
+
+                                onChanged: (value) {
+                                  if (value.isNotEmpty) {
+                                    setState(() {
+                                      showSendBtn = true;
+                                    });
+                                  } else {
+                                    setState(() {
+                                      showSendBtn = false;
+                                    });
+                                  }
+                                },
+
+                                showCursor: true,
+                                controller: _inputController,
+                                decoration: const InputDecoration(
                                     hintText: "Write message...",
                                     hintStyle: TextStyle(color: Colors.black54),
-                                    border: InputBorder.none
-                                ),
+                                    border: InputBorder.none),
                               ),
                             ),
                             IconButton(
@@ -214,17 +285,28 @@ class _ChatScreenState extends State<ChatScreen> {
                     const SizedBox(
                       width: 8,
                     ),
-                    Container(
-                      height: 45,
-                      width: 45,
-                      child: FloatingActionButton(
-                          onPressed: () {},
-                          backgroundColor: primaryColor,
-                          child: const Icon(
-                            Icons.send,
-                            color: Colors.white,
-                            size: 18,
-                          )),
+                    SizedBox(
+                      height: 50,
+                      width: 50,
+                      child: Padding(
+                        padding: const EdgeInsets.only(bottom: 5),
+                        child: FloatingActionButton(
+                            onPressed: () => {
+                              if(showSendBtn) {
+                                sendMessage()
+                              }
+                              else {
+                              //  record voice
+                                print("record voice")
+                              }
+                            },
+                            backgroundColor: primaryColor,
+                            child: Icon(
+                              showSendBtn ? Icons.send : Icons.mic,
+                              color: Colors.white,
+                              size: 18,
+                            )),
+                      ),
                     )
                   ],
                 ),
